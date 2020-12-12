@@ -72,7 +72,26 @@
               
 
 
+<p>Have you ever had the desire to use Python in R? Oh, well let's imagine that you did. All you have to do is install this fancy little package called 'Reticulate'. Let me give you a small taste of the possibilities.</p>
+<pre class="r"><code>library(reticulate)</code></pre>
+<p>Now that we have Reticulate installed, R can understand code written in Python. Kinda like learning French in half a second. Let's see how these two languages acn work together.</p>
+<pre class="python"><code>thisdict = {
+  &quot;Harry&quot;: &quot;Black&quot;,
+  &quot;Ron&quot;: &quot;Red&quot;,
+  &quot;Hermoine&quot;: &quot;Brown&quot;,
+  &quot;Dumbledore&quot;: &quot;White&quot;,
+  &quot;Voldemort&quot;: &quot;NA&quot;
+}
+print(thisdict)</code></pre>
+<pre><code>## {&#39;Harry&#39;: &#39;Black&#39;, &#39;Ron&#39;: &#39;Red&#39;, &#39;Hermoine&#39;: &#39;Brown&#39;, &#39;Dumbledore&#39;: &#39;White&#39;, &#39;Voldemort&#39;: &#39;NA&#39;}</code></pre>
+<pre class="r"><code>py_dict(c(&quot;Harry&quot;,&quot;Ron&quot;,&quot;Hermoine&quot;,&quot;Dumbledore&quot;,&quot;Voldemort&quot;),c(&quot;Black&quot;,&quot;Red&quot;,&quot;Brown&quot;,&quot;White&quot;,&quot;NA&quot;))</code></pre>
+<pre><code>## {&#39;Harry&#39;: &#39;Black&#39;, &#39;Ron&#39;: &#39;Red&#39;, &#39;Hermoine&#39;: &#39;Brown&#39;, &#39;Dumbledore&#39;: &#39;White&#39;, &#39;Voldemort&#39;: &#39;NA&#39;}</code></pre>
+<p>These are my dictionaries of Harry Potter characters and their respective hair colors. The first was made with base Python code while the second was made using the Reticulate package in R, but they both end up making the same dictionary.</p>
+<p>Now where does this mean for the Python vs. R debate. Is one truly better than the other, or is it just a matter of preference. Reticulate shows us that it really just is preference and that their differences can be resolved pretty easily. Below is how society would look if people could learn to use Python and R together instead of pitting them against each other.</p>
+<div class="figure">
+<img src="../../../../../post/2020-12-11-python-r_files/A-utopia.jpg" />
 
+</div>
 
             
         <hr>         <div class="related-posts">

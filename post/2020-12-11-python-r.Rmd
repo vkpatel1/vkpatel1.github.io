@@ -7,3 +7,39 @@ categories: []
 tags: []
 description: ''
 ---
+Have you ever had the desire to use Python in R? Oh, well let's imagine that you did. All you have to do is install this fancy little package called 'Reticulate'. Let me give you a small taste of the possibilities.
+
+```{r}
+library(reticulate)
+```
+
+Now that we have Reticulate installed, R can understand code written in Python. Kinda like learning French in half a second. Let's see how these two languages acn work together.
+
+
+```{python}
+thisdict = {
+  "Harry": "Black",
+  "Ron": "Red",
+  "Hermoine": "Brown",
+  "Dumbledore": "White",
+  "Voldemort": "NA"
+}
+print(thisdict)
+```
+
+```{r}
+py_dict(c("Harry","Ron","Hermoine","Dumbledore","Voldemort"),c("Black","Red","Brown","White","NA"))
+```
+
+These are my dictionaries of Harry Potter characters and their respective hair colors. The first was made with base Python code while the second was made using the Reticulate package in R, but they both end up making the same dictionary.
+
+Now where does this mean for the Python vs. R debate. Is one truly better than the other, or is it just a matter of preference. Reticulate shows us that it really just is preference and that their differences can be resolved pretty easily. Below is how society would look if people could learn to use Python and R together instead of pitting them against each other.
+
+![](/post/2020-12-11-python-r_files/A-utopia.jpg)
+
+
+
+
+
+
+

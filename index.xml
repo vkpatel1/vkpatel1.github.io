@@ -13,7 +13,8 @@
       <pubDate>Fri, 11 Dec 2020 00:00:00 +0000</pubDate>
       
       <guid>/post/2020/12/11/python-r/</guid>
-      <description></description>
+      <description>Have you ever had the desire to use Python in R? Oh, well let&#39;s imagine that you did. All you have to do is install this fancy little package called &#39;Reticulate&#39;. Let me give you a small taste of the possibilities.
+library(reticulate) Now that we have Reticulate installed, R can understand code written in Python. Kinda like learning French in half a second. Let&#39;s see how these two languages acn work together.</description>
     </item>
     
     <item>
