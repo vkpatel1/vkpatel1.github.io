@@ -1,0 +1,274 @@
+---
+title: 'Project 2: Modeling, Testing, and Predicting'
+author: "Vraj Patel (vkp324)"
+date: '11/22/20'
+output:
+  html_document:
+    toc: yes
+    toc_float:
+      collapsed: no
+      smooth_scroll: yes
+---
+
+```{r setup, include=FALSE}
+library(knitr)
+hook_output = knit_hooks$get('output')
+knit_hooks$set(output = function(x, options) {
+  # this hook is used only when the linewidth option is not NULL
+  if (!is.null(n <- options$linewidth)) {
+    x = knitr:::split_lines(x)
+    # any lines wider than n should be wrapped
+    if (any(nchar(x) > n)) x = strwrap(x, width = n)
+    x = paste(x, collapse = '\n')
+  }
+  hook_output(x, options)
+})
+
+knitr::opts_chunk$set(echo = TRUE, eval = TRUE,fig.align="center",warning=FALSE,message=FALSE,fig.width=8, fig.height=5, linewidth=60)
+options(tibble.width = 100,width = 100)
+library(tidyverse)
+```
+
+##Introduction
+
+  For this project, I decided to look at the abundance of heat shock protein 70 (HSP70) in the muscle tissue of Chinook Salmon dependant on the transcription level of 12 candidate genes in different areas of Alaska. I chose to use this dataset because I was interested in how researchers could analyze data from genes. Specifically, I wanted to better understand how they could determine which genes play a role in the amount of proteins that end up being translated. The dataset I found shows the location at which the salmon were captured, the salmon's length in millimeters, the relative transcription levels of 12 genes, and the abundance of HSP70 in the salmon. The dataset contains 499 observations and contains no NAs for any variable. I intend to use the salmon's location as my categorical variable, which contains 8 different groups. I do not know much about the areas that the researchers surveyed for their salmon, so I decided to look at where they are located on Google Maps. I believe that the areas that are more inland, Chena River and Salcha River, will have higher levels of HSP70 because the temperature on the coasts are more stable. Additionally, I do not know much about the genes that the researchers looked at, but I believe that these areas will also have lower transcription levels of HSP27, HSP70, and HSP90 since these are all genes for heat shock proteins including the gene for HSP70 itself. I will make a binary categorical variable for salmons that have above or below average HSP70 protein levels. The dataset also contains information about the salmon's unique ID, capture date, and some were given an experimental treatment. I do not need the salmon's ID or capture date for my data analysis, and while the experimental treatment involves placing the fish into different temperature environments, only 22 fish of the 499 were treated which is not sufficient for my analysis. 
+  
+##MANOVA, ANOVA, and T-Tests
+
+```{R}
+library(readr)
+library(tidyverse)
+library(rstatix)
+library(sandwich)
+library(lmtest)
+library(plotROC)
+library(glmnet)
+set.seed(1)
+
+#Preparing Dataset
+ChinookSalmon_heatstress_YukonAK_vonBiela_2016_2018 <- read_csv("ChinookSalmon_heatstress_YukonAK_vonBiela_2016_2018.csv")
+ProjectDF <- ChinookSalmon_heatstress_YukonAK_vonBiela_2016_2018 %>% select(-c(FishID,CaptureDate,Treatment)) %>% mutate(HSP70Level = ifelse(HSP70Protein>mean(HSP70Protein),1,0))
+
+#Testing Assumptions
+group <- ProjectDF$Location 
+DVs <- ProjectDF %>% select(Lengthmm,HSP27,HSP70,HSP90,HSP70Protein)
+
+sapply(split(DVs,group), mshapiro_test)
+
+#MANOVA
+manova <- manova(cbind(Lengthmm,HSP27,HSP70,HSP90,HSP70Protein)~Location,data = ProjectDF)
+summary(manova)
+
+#Univariate ANOVAs
+summary.aov(manova)
+
+#Pairwise T-Tests
+pairwise.t.test(ProjectDF$Lengthmm,ProjectDF$Location,p.adj = "none")
+pairwise.t.test(ProjectDF$HSP27,ProjectDF$Location,p.adj = "none")
+pairwise.t.test(ProjectDF$HSP70,ProjectDF$Location,p.adj = "none")
+pairwise.t.test(ProjectDF$HSP90,ProjectDF$Location,p.adj = "none")
+pairwise.t.test(ProjectDF$HSP70Protein,ProjectDF$Location,p.adj = "none")
+
+#Type 1 Error and Correction
+1-.95^146
+.05/146
+```
+
+For my MANOVA, I decided to test if the mean of the variables; length of the salmon, the transcription levels of HSP27, HSP70, or HSP90; and the amount of HSP70 protein was different amongst any of the different locations the researchers surveyed. After running the MANOVA, I found that at least one of these variables' means varied amongst the different locations. Next, I looked at the univariate ANOVAs for each numeric variable and location to see which variables' means actually differed amongst the different locations. I found that all of the variables differed for at least of the locations. In order to determine which locations that the variables' means actually differed at, I ran pairwise t-tests for each of my variables and the locations. For these tests, I ran 28 t-tests for each of my 5 variables for a total of 140 t-tests, 5 univariate ANOVAs, and 1 MANOVA, which makes a total of 146 tests. With an alpha level of .05, this means that I had a 99.94% chance of making a type I error, which means I most likely made at least one type I error during these tests. In order to correct for this, I used the bonferroni correction and adjusted my alpha value to .00034. 
+
+After using this new alpha value, the mean length differs between Chena River and Eagle Test Fishery, Chena River and Emmonak Test Fishery, Chena River and Rapids Fish Wheel, Eagle Test Fishery and Emmonak Test Fishery, Eagle Test Fishery and Gisasa River, Eagle Test Fishery and Rapids Fish Wheel, East Fork Andreafsky River and Emmonak Test Fishery, Emmonak Test Fishery and Gisasa River, Emmonak Test Fishery and Rapids Fish Wheel, Pilot Station and Rapids Fish Wheel.
+
+The mean HSP27 transcription level differs between Chena River and Emmonak Test Fishery, Chena River and Pilot Station, Eagle Test Fishery and East Fork Adreafsky River, Eagle Test Fishery and Emmonak Test Fishery, Eagle Test Fishery and Gisasa River, Eagle Test Fishery and Pilot Station, Eagle Test Fishery and Rapids Fish Wheel, East Fork Andreafsky River and Emmonak Test Fishery, East Fork Andreafsky River and Pilot Station, Emmonak Test Fishery and Gisasa River, Emmonak Test Fishery and Rapids Fish Wheel, and Gisasa River and Pilot Station.
+
+The mean HSP70 transcription level differs between Chena River and Eagle Test Fishery, Chena River and Emmonak Test Fishery, Chena River and Gisasa River, Chena River and Pilot Station, Chena River and Rapids Fish Wheel, Eagle Test Fishery and Emmonak Test Fishery, Eagle Test Fishery and Pilot Station, East Fork Andreafsky River and Emmonak Test Fishery, East Fork Andreafsky River and Gisasa River, East Fork Andreafsky River and Pilot Station, Emmonak Test Fishery and Gisasa River, Emmonak Test Fishery and Rapids Fish Wheel, Gisasa River and Pilot Station, Pilot Station and Rapids Fish Wheel, and Pilot Station and Salcha River.
+
+The mean HSP90 transcription level differs between Chena River and Eagle Test Fishery, Chena River and East Fork Andreafsky River, Chena River and Emmonak Test Fishery, Chena River and Gisasa River, Chena River and Pilot Station, Chena River and Rapids Fish Wheel, Eagle Test Fishery and Pilot Station, East Fork Andreafsky River and Pilot Station, Emmonak Test Fishery and Pilot Station, Pilot Station and Rapids Fish Wheel, and Pilot Station and Salcha River.
+
+The mean amount of HSP70 protein differs Chena River and East Fork Andreafsky River, Eagle Test Fishery and East Fork Adreafsky River, East Fork Andreafsky River and Emmonak Test Fishery, East Fork Andreafsky River and Gisasa River, East Fork Andreafsky River and Pilot Station, East Fork Andreafsky River and Pilot Station, and East Fork Andreafsky River and Rapids Fish Wheel.
+
+While testing for MANOVA assumptions, my test for multivariate normality failed, which means that my numeric variables are not normally distributed amongst each group. This could be an issue because a non-normal distribution causes the mean of the numeric variable to be heavily skewed, which makes it hard to make strong conclusions when assessing if the means for these variables are different amongst the different groups. 
+
+##Mean Difference Randomization Test
+
+```{R}
+#Actual Mean Difference in Length
+ProjectDF %>% group_by(HSP70Level) %>% summarize(MeanLength=mean(Lengthmm)) %>% summarize(MeanDiff=diff(MeanLength))
+
+#Randomization Test
+rand_dist<-vector()
+for(i in 1:5000){
+new<-data.frame(Lengthmm=sample(ProjectDF$Lengthmm),Level=ProjectDF$HSP70Level)
+rand_dist[i]<-mean(new[new$Level==1,]$Lengthmm)-
+mean(new[new$Level==0,]$Lengthmm)}
+mean(rand_dist > 9.3397 | rand_dist < -9.3397)
+
+#Visualization
+hist(rand_dist,main = "",ylab = "Count",xlab = "Distribution of Random Mean Differences"); abline(v = c(9.3397,-9.3397),col="blue")
+```
+
+For my randomization test, I decided to determine if there was a mean difference in length between salmon that have above average levels of HSP70 protein and salmon that have below average levels of HSP70 protein. The actual mean difference between these fish is 9.3397 mm. My randomization test first scrambled the length values for the different fish then calculated the mean difference in length for fish that have above average HSP70 protein levels and fish that have below average HSP70 protein levels for each randomized sample and saved them into a vector. I calculated the two-tailed p-value for my randomization test by finding the proportion of mean differences that have a magnitude greater than 9.3397 mm in the vector containing mean differences. My p-value was .4358, which means that there is not a significant difference in mean length between fish that have above average and below average HSP70 protein levels. 
+
+##Linear Regression Model
+
+```{R}
+#Mean Centering Length
+ProjectDF1 <- ProjectDF
+ProjectDF1$Lengthmm_c <- ProjectDF1$Lengthmm - mean(ProjectDF1$Lengthmm)
+
+#Linear Regression Model
+fit <- lm(HSP70Protein ~ Lengthmm_c * Location, data = ProjectDF1)
+summary(fit)
+
+#Checking Assumptions
+residuals <- fit$residuals
+fitted <- fit$fitted.values
+ggplot()+geom_point(aes(fitted,residuals))+geom_hline(yintercept=0, color='red')
+shapiro.test(residuals)
+bptest(fit)
+
+#Robust Standard Errors
+coeftest(fit, vcov = vcovHC(fit))
+```
+
+For my linear regression model, I decided to see how the abundance of HSP70 protein varies with length and location of the salmon. I first mean-centered length to get a better idea of how length affects HSP70 protein levels. 
+
+For my coefficients, I found that for salmon from Chena River, every 1 mm increase in length above the mean increases the HSP70 protein levels by .002997, on average. For fish with an average length, being found in Eagle Test Fishery decreases HSP70 protein levels by .4011 compared to fish from Chena River, on average. For fish with an average length, being found in East Fork Andreafsky River increases HSP70 protein levels by .6404 compared to fish from Chena River, on average. For fish with an average length, being found in Emmonak Test Fishery decreases HSP70 protein levels by .3176 compared to fish from Chena River, on average. For fish with an average length, being found in Gisasa River decreases HSP70 protein levels by .01352 compared to fish from Chena River, on average. For fish with an average length, being found in Pilot Station decreases HSP70 protein levels by .2731 compared to fish from Chena River, on average. For fish with an average length, being found in Rapids Fish Wheel decreases HSP70 protein levels by .3615 compared to fish from Chena River, on average. For fish with an average length, being found in Salcha River decreases HSP70 protein levels by .5114 compared to fish from Chena River, on average. The effect of length on HSP70 protein levels is .003714 lower for fish from Eagle Test Fishery compared to fish from Chena River. The effect of length on HSP70 protein levels is .0000742 lower for fish from East Fork Andreafsky River compared to fish from Chena River. The effect of length on HSP70 protein levels is .00242 lower for fish from Emmonak Test Fishery compared to fish from Chena River. The effect of length on HSP70 protein levels is .002221 lower for fish from Gisasa River compared to fish from Chena River. The effect of length on HSP70 protein levels is .005096 lower for fish from Pilot Station compared to fish from Chena River. The effect of length on HSP70 protein levels is .00233 lower for fish from Rapids Fish Wheel compared to fish from Chena River. The effect of length on HSP70 protein levels is .002956 lower for fish from Salcha River compared to fish from Chena River.
+
+When testing the assumptions for a linear regression, my model failed the tests for linearity, normailty, and homoskedacity. This means that my explanatory and response variables did not have a linear relationship between them, my residuals were not normally distributed, and there was not equal variance of points along the regression line. 
+
+After using robust standard errors, many more of my coefficients became significant. Initially, only the salmon's length, its location being Eagle Test Fishery, East Fork Andreafsky River, or Rapids Fish Wheel, and the interaction between length and being from Eagle Test Fishery had a significant effect on the HSP70 protein levels. Now, being from Emmonak Test Fishery or Salcha River and the interaction between length and Emmonak Test Fishery, length and Pilot Station, length and Rapids Fish Wheel, and length and Salcha River all have a significant effect on HSP70 protein levels, on average. 
+
+The adjusted R-squared value for my model is .124, which means that my model explains 12.4% of the variation in HSP70 protein levels.
+
+##Bootstrapped Model
+
+```{R}
+#Bootstrapped Model
+residual_resamp<-replicate(5000,{
+new_residual<-sample(residuals,replace=TRUE)
+newdat<-ProjectDF1
+newdat$new_y<-fitted+new_residual
+fit<-lm(new_y ~ Lengthmm_c * Location, data = newdat)
+coef(fit)
+})
+
+#Bootstrapped SE
+residual_resamp%>%t%>%as.data.frame%>%summarize_all(sd)
+```
+
+After using bootstrapped standard errors by resampling residuals, I found the standard errors to be slightly lower than the ones used in the original model and slightly higher than the ones used when utilizing robust standard errors. This means that the significant coefficients from the original model would stay significant, and maybe a few additional coefficients would become significant using these bootstrapped standard errors. 
+
+##Logistic Regression
+
+```{R}
+#Logistic Regression
+fit1 <- glm(HSP70Level ~ HSP70 + Lengthmm_c, data = ProjectDF1, family = "binomial")
+summary(fit1)
+
+#Confusion Matrix
+prob <- predict(fit1,type = "response")
+table(predict = as.numeric(prob>.5),truth = ProjectDF1$HSP70Level) %>% addmargins
+
+#Classification Diagnostics
+class_diag <- function(probs,truth){
+
+if(is.character(truth)==TRUE) truth<-as.factor(truth)
+if(is.numeric(truth)==FALSE & is.logical(truth)==FALSE) truth<-as.numeric(truth)-1
+
+tab<-table(factor(probs>.5,levels=c("FALSE","TRUE")),factor(truth, levels=c(0,1)))
+acc=sum(diag(tab))/sum(tab)
+sens=tab[2,2]/colSums(tab)[2]
+spec=tab[1,1]/colSums(tab)[1]
+ppv=tab[2,2]/rowSums(tab)[2]
+f1=2*(sens*ppv)/(sens+ppv)
+
+ord<-order(probs, decreasing=TRUE)
+probs <- probs[ord]; truth <- truth[ord]
+
+TPR=cumsum(truth)/max(1,sum(truth)) 
+FPR=cumsum(!truth)/max(1,sum(!truth))
+
+dup<-c(probs[-1]>=probs[-length(probs)], FALSE)
+TPR<-c(0,TPR[!dup],1); FPR<-c(0,FPR[!dup],1)
+n <- length(TPR)
+auc<- sum( ((TPR[-1]+TPR[-n])/2) * (FPR[-1]-FPR[-n]) )
+
+data.frame(acc,sens,spec,ppv,f1,auc)
+}
+
+class_diag(prob,ProjectDF1$HSP70Level)
+
+#Density Plot
+ProjectDF2<-ProjectDF
+ProjectDF2$logit <- predict(fit1)
+ggplot(ProjectDF2,aes(logit, group = HSP70Level, fill = HSP70Level)) + geom_density(alpha=.3) + 
+geom_vline(xintercept=0,lty=2)
+
+#ROC Plot
+ROCplot<-ggplot(ProjectDF2)+geom_roc(aes(d=HSP70Level,m=prob), n.cuts=0)
+ROCplot
+calc_auc(ROCplot)
+```
+
+For my logistic regression, I decided to determine the log-odds of being considered a salmon with above or below average HSP70 protein levels using length and HSP70 transcription levels. I found that for salmon with an average length, every 1 unit increase in HSP70 transcription levels decreases the log odds of having above average HSP70 protein levels. For salmon with a HSP70 transcription level of 0, every 1 mm increase in length increases the log-odds of having above average HSP70 protein levels by .001127.
+
+For my classification diagnostics, I found my accuracy to be .7735, my sensity to be 0, my specificity to be 1, and my AUC to be .6146. My accuracy value means that my model correctly sorted fish with below average HSP70 protein levels and fish with above average HSP70 protein levels into the correct category 77.35% of the time. However, most of this accuracy came from the fact that my specificity was 1, which means that my model correctly placed the 386 salmon with below average HSP70 into the correct category, but my sensitivity was 0, so my model also never placed the 113 salmon with above average HSP70 protein levels into the correct category and deemed them all as salmon with below average HSP70 protein levels. My AUC shows that for all classification cutoffs for my model 61.46% of them would return a correct answer at random.
+
+For my ROC plot, my AUC also equaled .61456, which means that for all classification cutoffs for my model when choosing a fish at random, my model has a 61.46% of correctly categorizing it as having above or below average HSP70 protein levels.
+
+##Complete Logistic Regression, Cross-Validation, and LASSO
+
+```{R}
+#Complete Logistic Regression
+fit2 <- glm(HSP70Level ~ ., data = ProjectDF, family = "binomial")
+summary(fit2)
+prob1 <- predict(fit2, type = "response")
+class_diag(prob1,ProjectDF$HSP70Level)
+
+#ROC Plot for Fun
+ROCPlot1<-ggplot(ProjectDF)+geom_roc(aes(d=HSP70Level,m=prob1), n.cuts=0)
+ROCPlot1
+
+#Cross-Validation
+k = 10
+data <- ProjectDF[sample(nrow(ProjectDF)),]
+folds <- cut(seq(1:nrow(ProjectDF)),breaks=k,labels=F)
+diags <- NULL
+for(i in 1:k){
+train <- data[folds!=i,]
+test <- data[folds==i,]
+truth <- test$HSP70Level
+fit2 <- glm(HSP70Level ~ .,data = train, family = "binomial")
+probs <- predict(fit2, newdata = test, type = "response")
+diags <- rbind(diags,class_diag(probs,truth))
+}
+summarize_all(diags,mean)
+
+#LASSO
+y <- as.matrix(ProjectDF$HSP70Level)
+x <- model.matrix(HSP70Level ~ ., data = ProjectDF)[,-1]
+cv<-cv.glmnet(x,y,family="binomial")
+lasso<-glmnet(x,y,family="binomial",lambda=cv$lambda.1se)
+coef(lasso)
+
+#CV with Retained Variables
+ProjectDF <- ProjectDF %>% mutate(Gisasa=ifelse(Location=="Gisasa River",1,0), Andreafsky=ifelse(Location=="East Fork Andreafsky River",1,0))
+data <- ProjectDF[sample(nrow(ProjectDF)),]
+folds <- cut(seq(1:nrow(ProjectDF)),breaks=k,labels=F)
+diags1 <- NULL
+for(i in 1:k){
+train <- data[folds!=i,]
+test <- data[folds==i,]
+truth <- test$HSP70Level
+fit3 <- glm(HSP70Level ~ Gisasa + Andreafsky + Gata3 + HSP90 + Leptin + MX1 + HSP70Protein, data = train, family = "binomial")
+probs1 <- predict(fit3, newdata = test, type = "response")
+diags1 <- rbind(diags1,class_diag(probs1,truth))
+}
+summarize_all(diags1,mean)
+```
+
+For my complete logistic regression, my accuracy was 1, sensitivity was 1, specificity was 1, and AUC was 1. This means that my model correctly predicted whether a fish would have above or below average HSP70 protein levels 100% of the time for any classification cutoff. This means that the model is essentially perfect. I added a ROC plot for this model.
+
+After performing my cross-validation I found my AUC to be .9778, which means that when randomly selecting a fish from this model, there is a 97.78% chance that the fish will be correctly categorized as having above or below average HSP70 protein levels. This AUC is only slightly lower than my AUC using a complete logistic regression, which indictaes that there may be some overfitting.
+
+To resolve the overfitting, I performed a LASSO to determine, which variables actually have a significant impact on the model's accuracy. The variables that were retained were; being from Gisasa River or East Fork Andreafsky River; the transcription level of Gata3, HSP90, Leptin, and MX1; and the abundance of HSP70 protein in the salmon. The cross-validation using the LASSO retained variables has an AUC of .9923, which is slightly higher than the CV model with all variables, but still lower than the complete logistic regression using all variables. However, this model would correctly categorize salmon as having above or below average HSP70 protein levels 99.23% of the time, which is very accurate.

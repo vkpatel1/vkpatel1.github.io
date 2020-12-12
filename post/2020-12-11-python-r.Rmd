@@ -1,0 +1,9 @@
+---
+title: "Python \U0001F91D R"
+author: Vraj Patel
+date: '2020-12-11'
+slug: python-r
+categories: []
+tags: []
+description: ''
+---

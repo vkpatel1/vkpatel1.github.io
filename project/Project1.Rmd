@@ -1,0 +1,221 @@
+---
+title: 'Project 1: Exploratory Data Analysis'
+author: "Vraj Patel (vkp324)"
+date: '10/18/20'
+output:
+  html_document:
+    toc: yes
+    toc_float:
+      collapsed: no
+      smooth_scroll: yes
+  pdf_document:
+    toc: no
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE, eval = TRUE, fig.align = "center", warning = F, message = F,
+tidy=TRUE, tidy.opts=list(width.cutoff=60), R.options=list(max.print=100))
+```
+
+## Introduction
+
+  For my project I have chosen to explore the relationship between the air quality in locations around the United States and the mortality rate of chronic respiratory diseases. One of the datasets I will be using includes information from different states about their air pollution indexes, including nitrogen dioxide (NO2), ozone (O3), sulphur dioxide (SO2), and carbon monoxide (CO). The other dataset I will be using includes information of the mortality rates due to chronic respiratory diseases across counties in different states. I intend to utilize these two datasets to determine if I can find a relationship between the quality of air in these states and the mortality rate due to chronic respiratory diseases. I found the air quality dataset by searching for US pollution data on kaggle.com and found the mortality dataset by searching for mortality rates due to respiratory diseases on Google and finding it on ghdx.healthdata.org. The air quality index gives day to day statistics for the different air quality measures (daily mean, maximum for the 1st hour, and daily max) for the different pollutants mentioned earlier from 2000 to 2016. The mortality dataset gives the mortality rate for chronic respiratory diseases for different counties in the United States every 5 years from 1985 to 2014. I plan to limit the observation to those only from 2000 ,2005, 2010, and 2014 because these are the most recent years that are in both datasets, and I intend to focus only yearly trends from removing the daily information from the air quality dataset. I chose to explore the relationship between these variables because I have wondered how much an effect breathing polluted air can have on our health, and why we should be pushing for cleaner air regulations in the country. Hopefully after analyzing these two datasets, I will see that states with higher amounts of air pollutants have higher mortality rates related to chronic respiratory diseases.
+
+## Tidying Before Joining Datasets
+
+```{R}
+library(tidyverse)
+
+library(readxl)
+IHME_USA_COUNTY_RESP_DISEASE_MORTALITY_1980_2014_NATIONAL_Y2017M09D26 <- read_excel("IHME_USA_COUNTY_RESP_DISEASE_MORTALITY_1980_2014_NATIONAL_Y2017M09D26.XLSX")
+
+
+library(readr)
+uspollution_pollution_us_2000_2016 <- read_csv("uspollution_pollution_us_2000_2016.csv")
+
+
+#uspollution_pollution_us_2000_2016 is the air quality dataset
+#IHME_USA_COUNTY_RESP_DISEASE_MORTALITY_1980_2014_NATIONAL_Y2017M09D26 is the mortality dataset
+
+ProjectDF1 <- uspollution_pollution_us_2000_2016 %>% separate(`Date Local`,into=c("i","Year"), sep = 4) %>% mutate(Year = str_replace(Year, "00", "2000"), Year = str_replace(Year,"05","2005"), Year = str_replace(Year, "10", "2010"),Year = str_replace(Year, "14", "2014")) %>% filter(Year==c(2000,2005,2010,2014)) %>% unite(State,Year,col = "Unique",sep = ".", remove = F) %>% group_by(Unique,State,Year) %>% summarize("NO2 Mean (ppm)"=mean(`NO2 Mean`),"Mean Maximum NO2 (ppm)"=mean(`NO2 1st Max Value`),"O3 Mean (ppm)"=mean(`O3 Mean`),"Mean Maximum O3 (ppm)"=mean(`O3 1st Max Value`),"SO2 Mean (ppm)"=mean(`SO2 Mean`),"Mean Maximum SO2 (ppm)"=mean(`SO2 1st Max Value`),"CO Mean (ppm)"=mean(`CO Mean`),"Mean Maximum CO (ppm)"=mean(`CO 1st Max Value`))
+
+ProjectDF2<-IHME_USA_COUNTY_RESP_DISEASE_MORTALITY_1980_2014_NATIONAL_Y2017M09D26 %>% separate(Location,into = c("p","Location"),sep = ", ") %>% pivot_longer(contains(", ")) %>% separate(name, into = c("i","Year"),sep = ", ") %>% separate(value, into = c("Mortality Rate (deaths per 1000 individuals)","j"),sep = " ") %>% separate(Year, into = c("Year","h"),sep = "\\*") %>% filter(Location!="United States",i!="% Change in Mortality Rate") %>% select(Location,Year,`Mortality Rate (deaths per 1000 individuals)`) %>% filter(Year==c("2000","2005","2010","2014")) %>% unite(Location,Year, col="Unique", sep = ".") %>% mutate(`Mortality Rate (deaths per 1000 individuals)`=as.numeric(`Mortality Rate (deaths per 1000 individuals)`)) %>% group_by(Unique) %>% summarize("Mean Mortality Rate (deaths per 1000 individuals)"=mean(`Mortality Rate (deaths per 1000 individuals)`)) %>% separate(Unique,into = c("State","Year"),remove = F)
+```
+
+  I started off by creating the common variable between the two datasets, which I decided should be the state and year, since this will cause each row to have its own unique variable. Next, I got rid of information in the dataset that I would not be using for my analysis and made the dataset easier to read with less clutter.
+
+## Joint Set
+
+```{R}
+joinset<-full_join(ProjectDF1,ProjectDF2, by = c("Unique","State","Year")) %>% na.omit() %>% ungroup()
+```
+
+  I decided to do a full join because each of my data sets exclusively contained data that I want to utilize in my analysis, so I did not want to lose any information from either of the datasets. The tidy air pollution dataset originally had 110 observations and the tidy mortality dataset originally had 204 observations. After doing a full join on both datasets and after dropping the NAs, 144 observations were lost because there were observations in the air pollution dataset that did not have a corresponding observation in the mortality dataset and vice versa.
+
+## Using dplyr Functions
+
+```{R}
+#Mean Air Pollutants for each Year
+joinset %>% filter(Year=="2000") %>% group_by(Year) %>% summarize("Mean NO2"=mean(`NO2 Mean (ppm)`),"Mean O3"=mean(`O3 Mean (ppm)`),"Mean SO2"=mean(`SO2 Mean (ppm)`),"Mean CO"=mean(`CO Mean (ppm)`))
+
+joinset %>% filter(Year=="2005") %>% group_by(Year) %>% summarize("Mean NO2"=mean(`NO2 Mean (ppm)`),"Mean O3"=mean(`O3 Mean (ppm)`),"Mean SO2"=mean(`SO2 Mean (ppm)`),"Mean CO"=mean(`CO Mean (ppm)`))
+
+joinset %>% filter(Year=="2010") %>% group_by(Year) %>% summarize("Mean NO2"=mean(`NO2 Mean (ppm)`),"Mean O3"=mean(`O3 Mean (ppm)`),"Mean SO2"=mean(`SO2 Mean (ppm)`),"Mean CO"=mean(`CO Mean (ppm)`))
+
+joinset %>% filter(Year=="2014") %>% group_by(Year) %>% summarize("Mean NO2"=mean(`NO2 Mean (ppm)`),"Mean O3"=mean(`O3 Mean (ppm)`),"Mean SO2"=mean(`SO2 Mean (ppm)`),"Mean CO"=mean(`CO Mean (ppm)`))
+```
+
+```{R}
+#Z-Scores of Max Air Pollutant Recorded (Descending)
+joinset %>% group_by(State) %>% summarize("Mean NO2"=mean(`NO2 Mean (ppm)`),"Mean O3"=mean(`O3 Mean (ppm)`),"Mean SO2"=mean(`SO2 Mean (ppm)`),"Mean CO"=mean(`CO Mean (ppm)`),"Mean Max NO2"=mean(`Mean Maximum NO2 (ppm)`),"Mean Max O3"=mean(`Mean Maximum O3 (ppm)`),"Mean Max SO2"=mean(`Mean Maximum SO2 (ppm)`),"Mean Max CO"=mean(`Mean Maximum CO (ppm)`),"sd NO2"=sd(`NO2 Mean (ppm)`),"sd O3"=sd(`O3 Mean (ppm)`),"sd SO2"=sd(`SO2 Mean (ppm)`),"sd CO"=sd(`CO Mean (ppm)`)) %>% na.omit() %>% mutate("Z-Score of Max NO2"=(`Mean Max NO2`-`Mean NO2`)/`sd NO2`,"Z-Score of Max O3"=(`Mean Max O3`-`Mean O3`)/`sd O3`,"Z-Score of Max SO2"=(`Mean Max SO2`-`Mean SO2`)/`sd SO2`,"Z-Score of Max CO"=(`Mean Max CO`-`Mean CO`)/`sd CO`) %>% select(State,"Z-Score of Max NO2") %>% arrange(desc(`Z-Score of Max NO2`))
+
+joinset %>% group_by(State) %>% summarize("Mean NO2"=mean(`NO2 Mean (ppm)`),"Mean O3"=mean(`O3 Mean (ppm)`),"Mean SO2"=mean(`SO2 Mean (ppm)`),"Mean CO"=mean(`CO Mean (ppm)`),"Mean Max NO2"=mean(`Mean Maximum NO2 (ppm)`),"Mean Max O3"=mean(`Mean Maximum O3 (ppm)`),"Mean Max SO2"=mean(`Mean Maximum SO2 (ppm)`),"Mean Max CO"=mean(`Mean Maximum CO (ppm)`),"sd NO2"=sd(`NO2 Mean (ppm)`),"sd O3"=sd(`O3 Mean (ppm)`),"sd SO2"=sd(`SO2 Mean (ppm)`),"sd CO"=sd(`CO Mean (ppm)`)) %>% na.omit() %>% mutate("Z-Score of Max NO2"=(`Mean Max NO2`-`Mean NO2`)/`sd NO2`,"Z-Score of Max O3"=(`Mean Max O3`-`Mean O3`)/`sd O3`,"Z-Score of Max SO2"=(`Mean Max SO2`-`Mean SO2`)/`sd SO2`,"Z-Score of Max CO"=(`Mean Max CO`-`Mean CO`)/`sd CO`) %>% select(State,"Z-Score of Max O3") %>% arrange(desc(`Z-Score of Max O3`))
+
+joinset %>% group_by(State) %>% summarize("Mean NO2"=mean(`NO2 Mean (ppm)`),"Mean O3"=mean(`O3 Mean (ppm)`),"Mean SO2"=mean(`SO2 Mean (ppm)`),"Mean CO"=mean(`CO Mean (ppm)`),"Mean Max NO2"=mean(`Mean Maximum NO2 (ppm)`),"Mean Max O3"=mean(`Mean Maximum O3 (ppm)`),"Mean Max SO2"=mean(`Mean Maximum SO2 (ppm)`),"Mean Max CO"=mean(`Mean Maximum CO (ppm)`),"sd NO2"=sd(`NO2 Mean (ppm)`),"sd O3"=sd(`O3 Mean (ppm)`),"sd SO2"=sd(`SO2 Mean (ppm)`),"sd CO"=sd(`CO Mean (ppm)`)) %>% na.omit() %>% mutate("Z-Score of Max NO2"=(`Mean Max NO2`-`Mean NO2`)/`sd NO2`,"Z-Score of Max O3"=(`Mean Max O3`-`Mean O3`)/`sd O3`,"Z-Score of Max SO2"=(`Mean Max SO2`-`Mean SO2`)/`sd SO2`,"Z-Score of Max CO"=(`Mean Max CO`-`Mean CO`)/`sd CO`) %>% select(State,"Z-Score of Max SO2") %>% arrange(desc(`Z-Score of Max SO2`))
+
+joinset %>% group_by(State) %>% summarize("Mean NO2"=mean(`NO2 Mean (ppm)`),"Mean O3"=mean(`O3 Mean (ppm)`),"Mean SO2"=mean(`SO2 Mean (ppm)`),"Mean CO"=mean(`CO Mean (ppm)`),"Mean Max NO2"=mean(`Mean Maximum NO2 (ppm)`),"Mean Max O3"=mean(`Mean Maximum O3 (ppm)`),"Mean Max SO2"=mean(`Mean Maximum SO2 (ppm)`),"Mean Max CO"=mean(`Mean Maximum CO (ppm)`),"sd NO2"=sd(`NO2 Mean (ppm)`),"sd O3"=sd(`O3 Mean (ppm)`),"sd SO2"=sd(`SO2 Mean (ppm)`),"sd CO"=sd(`CO Mean (ppm)`)) %>% na.omit() %>% mutate("Z-Score of Max NO2"=(`Mean Max NO2`-`Mean NO2`)/`sd NO2`,"Z-Score of Max O3"=(`Mean Max O3`-`Mean O3`)/`sd O3`,"Z-Score of Max SO2"=(`Mean Max SO2`-`Mean SO2`)/`sd SO2`,"Z-Score of Max CO"=(`Mean Max CO`-`Mean CO`)/`sd CO`) %>% select(State,"Z-Score of Max CO") %>% arrange(desc(`Z-Score of Max CO`))
+```
+
+I first decided to utilize filter, group by, and summarize to show the mean levels of the air pollutants for each of the years in the dataset. I did this in order to see if the levels of these pollutants have dropped since 2000 due to efforts to combat climate change and the effects of pollution. For all pollutants except ozone, levels in the atmosphere has dropped drastically. Next, I decided to use
+group by, summarize, mutate, select, and arrange to calculate the Z-score of the max pollutant value. I did this in order to see how significant a value of a pollutant could be in this dataset, and I found that some pollutant levels were 40+ standard deviations above the mean, including the maximum carbon monoxide level of Nevada, which was 125.24 standard deviations above the mean.
+
+## Summary Statistics
+
+```{R}
+#Calculating mean, standard deviation, variance, minimum value, and maximum value for all numeric variables
+joinset %>% summarize_if(is.numeric,mean)
+
+joinset %>% summarize_if(is.numeric,sd)
+
+joinset %>% summarize_if(is.numeric,var)
+
+joinset %>% summarize_if(is.numeric,min)
+
+joinset %>% summarize_if(is.numeric,max)
+```
+
+```{R}
+#Number of distinct observations for each variable
+joinset %>% summarize_all(n_distinct)
+```
+
+```{R}
+#Summary statistics for air pollutants for each state and for each year
+joinset %>% group_by(State) %>% summarize("Mean NO2"=mean(`NO2 Mean (ppm)`),"Mean O3"=mean(`O3 Mean (ppm)`),"Mean SO2"=mean(`SO2 Mean (ppm)`),"Mean CO"=mean(`CO Mean (ppm)`))
+
+joinset %>% group_by(State) %>% summarize("SD NO2"=sd(`NO2 Mean (ppm)`),"SD O3"=sd(`O3 Mean (ppm)`),"SD SO2"=sd(`SO2 Mean (ppm)`),"SD CO"=sd(`CO Mean (ppm)`))
+
+joinset %>% group_by(State) %>% summarize("Minimum NO2"=min(`NO2 Mean (ppm)`),"Minimum O3"=min(`O3 Mean (ppm)`),"Minimum SO2"=min(`SO2 Mean (ppm)`),"Minimum CO"=min(`CO Mean (ppm)`))
+
+joinset %>% group_by(State) %>% summarize("Maximum NO2"=max(`NO2 Mean (ppm)`),"Maximum O3"=max(`O3 Mean (ppm)`),"Maximum SO2"=max(`SO2 Mean (ppm)`),"Maximum CO"=max(`CO Mean (ppm)`))
+
+joinset %>% group_by(Year) %>% summarize("Mean NO2"=mean(`NO2 Mean (ppm)`),"Mean O3"=mean(`O3 Mean (ppm)`),"Mean SO2"=mean(`SO2 Mean (ppm)`),"Mean CO"=mean(`CO Mean (ppm)`))
+
+joinset %>% group_by(Year) %>% summarize("SD NO2"=sd(`NO2 Mean (ppm)`),"SD O3"=sd(`O3 Mean (ppm)`),"SD SO2"=sd(`SO2 Mean (ppm)`),"SD CO"=sd(`CO Mean (ppm)`))
+
+joinset %>% group_by(Year) %>% summarize("Minimum NO2"=min(`NO2 Mean (ppm)`),"Minimum O3"=min(`O3 Mean (ppm)`),"Minimum SO2"=min(`SO2 Mean (ppm)`),"Minimum CO"=min(`CO Mean (ppm)`))
+
+joinset %>% group_by(Year) %>% summarize("Maximum NO2"=max(`NO2 Mean (ppm)`),"Maximum O3"=max(`O3 Mean (ppm)`),"Maximum SO2"=max(`SO2 Mean (ppm)`),"Maximum CO"=max(`CO Mean (ppm)`))
+```
+
+```{R}
+#Mean air pollutants for mortality rates above or below the mean mortality rate for all states
+joinset %>% filter(`Mean Mortality Rate (deaths per 1000 individuals)`< mean(`Mean Mortality Rate (deaths per 1000 individuals)`)) %>% group_by(State) %>% summarize_if(is.numeric,mean) %>% select(State,`NO2 Mean (ppm)`,`O3 Mean (ppm)`,`SO2 Mean (ppm)`,`CO Mean (ppm)`) %>% arrange(desc(`NO2 Mean (ppm)`))
+
+joinset %>% filter(`Mean Mortality Rate (deaths per 1000 individuals)`> mean(`Mean Mortality Rate (deaths per 1000 individuals)`)) %>% group_by(State) %>% summarize_if(is.numeric,mean) %>% select(State,`NO2 Mean (ppm)`,`O3 Mean (ppm)`,`SO2 Mean (ppm)`,`CO Mean (ppm)`) %>% arrange(desc(`NO2 Mean (ppm)`))
+
+joinset %>% filter(`Mean Mortality Rate (deaths per 1000 individuals)`< mean(`Mean Mortality Rate (deaths per 1000 individuals)`)) %>% group_by(State) %>% summarize_if(is.numeric,mean) %>% select(State,`NO2 Mean (ppm)`,`O3 Mean (ppm)`,`SO2 Mean (ppm)`,`CO Mean (ppm)`) %>% arrange(desc(`O3 Mean (ppm)`))
+
+joinset %>% filter(`Mean Mortality Rate (deaths per 1000 individuals)`> mean(`Mean Mortality Rate (deaths per 1000 individuals)`)) %>% group_by(State) %>% summarize_if(is.numeric,mean) %>% select(State,`NO2 Mean (ppm)`,`O3 Mean (ppm)`,`SO2 Mean (ppm)`,`CO Mean (ppm)`) %>% arrange(desc(`O3 Mean (ppm)`))
+
+joinset %>% filter(`Mean Mortality Rate (deaths per 1000 individuals)`< mean(`Mean Mortality Rate (deaths per 1000 individuals)`)) %>% group_by(State) %>% summarize_if(is.numeric,mean) %>% select(State,`NO2 Mean (ppm)`,`O3 Mean (ppm)`,`SO2 Mean (ppm)`,`CO Mean (ppm)`) %>% arrange(desc(`SO2 Mean (ppm)`))
+
+joinset %>% filter(`Mean Mortality Rate (deaths per 1000 individuals)`> mean(`Mean Mortality Rate (deaths per 1000 individuals)`)) %>% group_by(State) %>% summarize_if(is.numeric,mean) %>% select(State,`NO2 Mean (ppm)`,`O3 Mean (ppm)`,`SO2 Mean (ppm)`,`CO Mean (ppm)`) %>% arrange(desc(`SO2 Mean (ppm)`))
+
+joinset %>% filter(`Mean Mortality Rate (deaths per 1000 individuals)`< mean(`Mean Mortality Rate (deaths per 1000 individuals)`)) %>% group_by(State) %>% summarize_if(is.numeric,mean) %>% select(State,`NO2 Mean (ppm)`,`O3 Mean (ppm)`,`SO2 Mean (ppm)`,`CO Mean (ppm)`) %>% arrange(desc(`CO Mean (ppm)`))
+
+joinset %>% filter(`Mean Mortality Rate (deaths per 1000 individuals)`> mean(`Mean Mortality Rate (deaths per 1000 individuals)`)) %>% group_by(State) %>% summarize_if(is.numeric,mean) %>% select(State,`NO2 Mean (ppm)`,`O3 Mean (ppm)`,`SO2 Mean (ppm)`,`CO Mean (ppm)`) %>% arrange(desc(`CO Mean (ppm)`))
+```
+
+```{R}
+#Mean mortality rate per year and percent change in mortality from year to year
+joinset %>% group_by(Year) %>% summarize("Mean Mortality Rate"=mean(`Mean Mortality Rate (deaths per 1000 individuals)`)) %>% mutate_at(.vars=vars(`Mean Mortality Rate`),.funs = funs("Percent Change in Mortality from Prev Year" = ((. / lag(.)) - 1)))
+```
+
+```{R}
+#Correlation between air pollutants and mortality rates
+joinsetnum <- joinset %>% select_if(is.numeric) %>% cor(use="pair") %>% as.data.frame()
+```
+
+I first decided to find the mean, standard deviation, and variance of the numeric variables in my overall dataset, then I found the minimum and maximum values for each numeric variable as well. I did this in order to get a general idea of the value I would or could see while analyzing and exploring my data. Next, I found the number of distinct observations for each variable. Next, I grouped the data by state or year and then calculated the mean, standard deviation, minimum, and maximum for each air pollutant. Next, I filtered the dataset to show states whose mortality rate was below the mean mortality rate and found the mean air pollutant values for each state, which I compared to similar values for the states who mortality rates were above the mean mortality rate. When comparing these datasets, I found that the states with higher than average mortality rates actually seemed to have lower levels of NO2, SO2, and CO, but has higher levels of O3. This does not correspond to what I was hoping to see when I was planning this experiment, but this may be due to the fact that I do not have a considerable amount of observations for each state for each year. Next, I decided to find the mortality rate for each year and calculated the change in mortality from year to year. These data shows that the mortality rate decreases from 2000 to 2005 and from 2005 to 2010, but slightly increased from 2010 to 2014, but overall the mortality has decreased, which may be due to advances in healthcare.
+
+## Correlation Heatmap
+
+```{R fig.width=25,fig.height=12}
+cormap <- joinsetnum %>% rownames_to_column("var1") %>% pivot_longer(-1,names_to="var2",values_to="correlation")
+
+cormap %>% ggplot(aes(var1,var2,fill=correlation)) + geom_tile() + labs(title = "Correlation Heatmap between Numeric Variables",x="Variable 1",y="Variable 2")
+```
+
+The correlation heatmap helps to visualize the relationships between the variables in my dataset. The most obvious correlation that shows up on the map is the string positive correlation between the mean measure of an air pollutant and the mean maximum value of the same air pollutant (ex. Mean NO2 and Mean Maximum NO2), which makes sense because as the mean values for the pollutant is high, the mean maximum value should also be higher. Another apparent trend is that mean O3 values have a negative relationship with the other pollutants, which means that mean O3 levels decrease as the other pollutants increase in concentration. Finally, it seems that the mean mortality rates for chronic respiratory diseases have a weakly negative relationship with the other variables or almost no relationship at all, which means that the mortality rate does not seem to be affected much by the levels of air pollutants in the atmosphere, but there does seem to be some sort of negative relationship, which does not reinforce what I expected to see from the relationships between the air pollutants and the mortality rate. Hopefully, if I am able to find more data to increase my sample sizes, a better trend can be found.
+
+## Barplot of Air Pollutant Means by State
+
+```{R fig.width=12}
+joinset3 <- joinset %>% gather("Pollutant", "Air Pollutant Value (ppm)",-State,-Year)  %>% filter(Pollutant==c("NO2 Mean (ppm)","O3 Mean (ppm)","SO2 Mean (ppm)","CO Mean (ppm)"))
+
+joinset3$`Air Pollutant Value (ppm)` <- as.numeric(joinset3$`Air Pollutant Value (ppm)`)
+
+joinset3 %>% ggplot(aes(State,`Air Pollutant Value (ppm)`,fill=Year)) + geom_bar(stat = "summary") + facet_wrap(~Pollutant,scales = "free") + labs(title = "Mean Pollutant Value per State and Year",x="State",y= "Mean Pollutant Value (ppm)") + scale_y_continuous() + scale_x_discrete("State",labels=c("Alabama"="AL","Alaska"="AK","Arizona"="AZ","Arkansas"="AR","California"="CA","Colorado"="CO","Connecticut"="CT","Delaware"="DE","Florida"="FL","Georgia"="GA","Hawaii"="HI","Idaho"="ID","Illinois"="IL","Indiana"="IN","Iowa"="IA","Kansas"="KS","Kentucky"="KY","Louisiana"="LA","Maine"="ME","Maryland"="MD","Massachusetts"="MA","Michigan"="MI","Minnesota"="MN","Missouri"="MO","Nevada"="NV","Ohio"="OH","Oklahoma"="OK","Oregon"="OR","Pennsylvania"="PA","Tennessee"="TN","Texas"="TX","Utah"="UT","Virginia"="VA","Washington"="WA","Wyoming"="WY")) + theme_bw() + theme( strip.background  = element_blank(),panel.grid.major = element_line(colour = "grey80"),panel.border = element_blank(),axis.ticks = element_blank(),panel.grid.minor.x=element_blank(),panel.grid.major.x=element_blank())
+```
+
+Next, I decided to make bar graphs showing the mean levels of the air pollutants in the air for the different air pollutants in different states. The bar graph would help show which states have a significantly higher level of a specific air pollutant compared to other states and show if a state that has high levels on one pollutant has high levels of others. For carbon monoxide levels, it seems that Virginia and California are closely tied for having the highest levels. For nitrogen dioxide, Illinois has the highest levels by a decent amount. For ozone levels, Tennessee has the highest levels. For sulfur dioxide levels, Arkansas has the highest levels by significant amounts. For all of these measures, it seems that states closer to the South and with higher populations have higher levels of air pollutants.
+
+## Scatterplot Showing the Relationship Between Concentration of Air Pollutants and Mortality Rate
+
+```{R fig.width 15}
+joinset4 <- joinset %>% gather("Pollutant", "Air Pollutant Value (ppm)",-State,-Year,-"Mean Mortality Rate (deaths per 1000 individuals)") %>% filter(Pollutant==c("NO2 Mean (ppm)","O3 Mean (ppm)","SO2 Mean (ppm)","CO Mean (ppm)"))
+
+joinset4$`Air Pollutant Value (ppm)` <- as.numeric(joinset4$`Air Pollutant Value (ppm)`)
+
+joinset4$`Mean Mortality Rate (deaths per 1000 individuals)`<- as.numeric(joinset4$`Mean Mortality Rate (deaths per 1000 individuals)`)
+
+joinset4 %>% ggplot(aes(`Air Pollutant Value (ppm)`,`Mean Mortality Rate (deaths per 1000 individuals)`)) + geom_point(aes(color=Pollutant)) + facet_wrap(Pollutant~Year,scales = "free") + geom_smooth(method = lm,se=F) + scale_color_brewer(palette = "Spectral") + labs(title = "Relationships between Pollutant Value and Mortality Rate per Year",x="Pollutant Value (ppm)",y="Mortality Rate (deaths/1000 individuals)") + theme_classic()
+```
+
+Finally, I decided to create a scatterplot that compares mortality rates with the levels of the different air pollutants across the different years in my dataset. By splitting the trends by year and the air pollutant I am better able to see trends for a certain air pollutant and how that trend has changed over time. However, splitting the trends has also decreased the number of observations in each graph so the trends may not be enitrely accurate, but I am still able to make some generalizations. Overall, it seems that the regression lines show that there is not a significant association between an air pollutant and mortality rate, and some air pollutants seem to show a slightly weak negative relationship for some pollutants such as carbon monoxide. However, with the low sample sizes, I would like to find additional data to get more a concrete analysis of the data.
+
+## Pam Clustering
+
+```{R}
+#Finding Number of Clusters
+library(cluster)
+library(GGally)
+
+joinset5 <- joinset %>% mutate_if(is.character,as.factor)
+
+gower1 <- daisy(joinset5,metric = "gower")
+
+sil_width<-vector()
+for(i in 2:10){
+pam_fit <- pam(gower1, diss = TRUE, k = i)
+sil_width[i] <- pam_fit$silinfo$avg.width}
+
+ggplot()+geom_line(aes(x=1:10,y=sil_width))+scale_x_continuous(name="k",breaks=1:10)
+#k=4
+```
+
+```{R fig.width 50,fig.height 50}
+#Clustering Analysis and Visualization
+pam1 <- pam(gower1, k=4 , diss = T)
+
+plot(pam1,which=2)
+
+joinset6 <- joinset5 %>% mutate(cluster=pam1$clustering)
+
+options(expressions = 10000)
+
+joinset6 %>% ggpairs(columns = c(2,3,4,6,8,10,12), aes(color=as.factor(cluster)),cardinality_threshold = 50)
+```
+
+I started the clustering process by processing my categorical variables into factors so I could calculate the Gower dissimilarity. Next, I used a for-loop to calculate silhouette width and graphed the data to determine the number of clusters to use, which I found to be 4 clusters. Now that I had my data ready, I used the PAM clustering function with for clusters to get my cluster analysis. With my cluster data, I found the average silhouette width to be .19, which means that no substantial structure was found for the clusters. Knowing that my cluster structure was very weak, I did not expect to find much when analyzing my plot of the pairwise combinations. When looking at my plot information, the clusters looked very similar with the exception that clusters 2 and 3 seem to have slightly higher values of mean sulfur dioxide and carbon monoxide. Additionally, the strongest positive correlation between mortality rate and pollutant levels is with ozone levels with a correlation of .125 and the strongest negative correlation is with carbon monoxide with a correlation of -.146, both of which are fairly weak. Overall, mortality rate seems to have a very weak relationship with pollutant levels, which does not support my hypothesis that higher pollutant levels lead to higher death rates due to chronic respiratory diseases, but hopefully this is due to a lack of observations for states across multiple years.

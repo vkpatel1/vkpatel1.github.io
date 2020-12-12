@@ -1,0 +1,28 @@
+<?xml version="1.0" encoding="utf-8" standalone="yes"?>
+<rss version="2.0" xmlns:atom="http://www.w3.org/2005/Atom">
+  <channel>
+    <title>Projects on Vraj Patel</title>
+    <link>/project/</link>
+    <description>Recent content in Projects on Vraj Patel</description>
+    <generator>Hugo -- gohugo.io</generator>
+    <language>en-US</language><atom:link href="/project/index.xml" rel="self" type="application/rss+xml" />
+    <item>
+      <title>Project 1: Exploratory Data Analysis</title>
+      <link>/project/project1/</link>
+      <pubDate>Mon, 01 Jan 0001 00:00:00 +0000</pubDate>
+      
+      <guid>/project/project1/</guid>
+      <description>Introduction For my project I have chosen to explore the relationship between the air quality in locations around the United States and the mortality rate of chronic respiratory diseases. One of the datasets I will be using includes information from different states about their air pollution indexes, including nitrogen dioxide (NO2), ozone (O3), sulphur dioxide (SO2), and carbon monoxide (CO). The other dataset I will be using includes information of the mortality rates due to chronic respiratory diseases across counties in different states.</description>
+    </item>
+    
+    <item>
+      <title>Project 2: Modeling, Testing, and Predicting</title>
+      <link>/project/project2/</link>
+      <pubDate>Mon, 01 Jan 0001 00:00:00 +0000</pubDate>
+      
+      <guid>/project/project2/</guid>
+      <description>Introduction For this project, I decided to look at the abundance of heat shock protein 70 (HSP70) in the muscle tissue of Chinook Salmon dependant on the transcription level of 12 candidate genes in different areas of Alaska. I chose to use this dataset because I was interested in how researchers could analyze data from genes. Specifically, I wanted to better understand how they could determine which genes play a role in the amount of proteins that end up being translated.</description>
+    </item>
+    
+  </channel>
+</rss>
